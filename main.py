@@ -159,6 +159,16 @@ ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right")
 plt.figure()
 sns.factorplot(x = 'OutcomeSeason', hue = 'OutcomeYear', col = 'OutcomeType', data = data_inter, kind = 'count')
 
+'''5)Name and No Name difference'''
+plt.figure()
+sns.countplot(x = 'Name', hue = 'OutcomeType', data = data_inter)
+
+'''6)Suboutcome effect on the outcome'''
+plt.figure()
+sns.countplot(x = 'OutcomeSubtype', hue = 'OutcomeType', data = data_inter)
+
+
+
 '''Find out how many NaN values are in the dataset'''
 graph_na(data_train)
 
@@ -187,6 +197,12 @@ outcome_mapping = {'Return_to_owner':1, 'Euthanasia':2, 'Adoption':3, 'Transfer'
 data_train['OutcomeType'] = data_train['OutcomeType'].map(outcome_mapping)
 
 '''Year and Month information extraction'''
+year_list, month_list = datetime_str_converter(data_train)
+date_list = []
+for year, month in zip(year_list, month_list):
+    date_list.append(int(year + month))
+data_train['Date'] = date_list
+
 year_list, month_list = datetime_converter(data_train)
 data_train['OutcomeYear'], data_train['OutcomeMonth'] = year_list, month_list
 season_list = season_sort(month_list)
