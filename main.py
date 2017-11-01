@@ -44,6 +44,17 @@ def no_name_label(x):
     else:
         return 1
     
+def convert_subtype(data_train):
+    subtype_unique = list(data_train['OutcomeSubtype'].unique())
+    subtype_mapping = {}
+    for i, item in enumerate(subtype_unique):
+        if item == 0:
+            continue
+        else:
+            subtype_mapping[item] = i
+    data_train['OutcomeSubtype'] = data_train['OutcomeSubtype'].map(subtype_mapping)
+    return data_train
+    
 def datetime_converter(data_train):
     datetime = list(data_train['DateTime'])
     year_list, month_list = [], []
@@ -103,8 +114,15 @@ data_train.drop('AnimalID', axis = 1, inplace = True)
 '''Count Number of outcomes'''
 count_outcome(data_train)
 
-'''Simple data processing for pets with name get 1 and pets without names get a 0'''
+'''name mapping get 1 and pets without names get a 0'''
 data_train['Name'] = data_train['Name'].transform(no_name_label)
+
+'''OutcomeSubtype encoding'''
+data_train = convert_subtype(data_train)
+data_train['OutcomeSubtype'] = data_train['OutcomeSubtype'].fillna(0)
+
+'''Drop all nan values in other columns'''
+data_train = data_train.dropna()
 
 '''Animal mapping'''
 animal_type_mapping = {'Dog':1, 'Cat':0}
@@ -119,6 +137,9 @@ year_list, month_list = datetime_converter(data_train)
 data_train['OutcomeYear'], data_train['OutcomeMonth'] = year_list, month_list
 season_list = season_sort(month_list)
 data_train['OutcomeSeason'] = season_list
+'''Drop the datetime column since we don't need information on day and 
+the exact time of adoption'''
+data_train.drop('DateTime', axis = 1, inplace = True)
 
 '''Convert AgeUponOutcome to unit of days'''
 '''First confirm the unique string values that are present in the column'''
