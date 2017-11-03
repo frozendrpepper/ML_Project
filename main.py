@@ -120,7 +120,32 @@ def convert_sex(data_train):
                           'Unknown':0} 
     data_train['SexuponOutcome'] = data_train['SexuponOutcome'].map(sexOutcome_mapping)
     return data_train, sexOutcome_mapping
-    
+
+def remove_mix(data_train):
+    breed_list = list(data_train['Breed'])
+    breed_compile = []
+    for item in breed_list:
+        item = item.lower()
+        if 'mix' in item:
+            item = item[:-4]
+        breed_compile.append(item)
+    return breed_compile
+
+def dog_breed_category(data_train):
+    breed_df = data_train[['OutcomeType', 'AnimalType', 'Breed']]
+    breed_df_dog = breed_df[breed_df.AnimalType == 'Dog'].reset_index()
+    breed_list = list(breed_df_dog['Breed'])
+    breed_compile = []
+    for item in breed_list:
+        item = item.lower()
+        if 'mix' in item:
+            breed_compile.append('pure mix')
+        elif '/' in item:
+            breed_compile.append('mix')
+        else:
+            breed_compile.append('pure')
+    breed_df_dog['Breed_dog'] = breed_compile
+    return breed_df_dog
     
 data_train = pd.read_csv('train.csv')
 '''Keep a copy of the original data for comparison'''
@@ -142,6 +167,10 @@ data_inter['OutcomeYear'], data_inter['OutcomeMonth'] = year_list, month_list
 season_list = season_sort(month_list)
 data_inter['OutcomeSeason'] = season_list
     
+'''Classify the Outcome via larger category of dog breed'''
+breed_df_dog = dog_breed_category(data_inter)
+
+
 '''Graph some useful charts using Seaborn countplot'''
 '''1) Relationship b/t sexual orientation and the outcome'''
 plt.figure()
@@ -151,12 +180,15 @@ plt.figure()
 sns.countplot(x = 'AnimalType', hue = 'OutcomeType', data = data_inter)
 '''3) Relationship between month and the final outcome'''
 '''Reference: https://stackoverflow.com/questions/42528921/how-to-prevent-overlapping-x-axis-labels-in-sns-countplot'''
-plt.figure()
+plt.figure()    
 ax = sns.countplot(x = 'Date', hue = 'OutcomeType', data = data_inter)
 ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right")
 
+'''Same result as above graph except they are separated by the different outcome'''
+ax2 = sns.factorplot(x = 'Date', col = 'OutcomeType', data = data_inter, kind = 'count')
+ax2.set_xticklabels(ax.get_xticklabels(), rotation=90, ha="right")
+
 '''4)Plot by seasonal change'''
-plt.figure()
 sns.factorplot(x = 'OutcomeSeason', hue = 'OutcomeYear', col = 'OutcomeType', data = data_inter, kind = 'count')
 
 '''5)Name and No Name difference'''
@@ -167,7 +199,12 @@ sns.countplot(x = 'Name', hue = 'OutcomeType', data = data_inter)
 plt.figure()
 sns.countplot(x = 'OutcomeSubtype', hue = 'OutcomeType', data = data_inter)
 
+'''Outcome via larger breed cateogyr'''
+plt.figure()
+sns.countplot(x = 'Breed_dog', hue = 'OutcomeType', data = breed_df_dog)
 
+###############################################################################
+###############################################################################
 
 '''Find out how many NaN values are in the dataset'''
 graph_na(data_train)
@@ -232,3 +269,4 @@ data_train['AgeuponOutcome'] = age_day_compile
 '''If they are sprayed/neutered, consider them equal as neutered, if not intact.
 Unknowns will be left as unknowns'''
 data_train, sexOutcome_mapping = convert_sex(data_train)
+
