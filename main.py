@@ -22,6 +22,8 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
+import requests
+from bs4 import BeautifulSoup
 
 def graph_na(data_train):
     plt.figure()
@@ -46,12 +48,15 @@ def no_name_label(x):
     
 def no_name_numeric_label(x):
     '''Reference: https://github.com/JihongL/Shelter-Animal-Outcomes/blob/master/Shelter_EDA.ipynb'''
+    '''This function is used in conjunction with .transform() method to convert Name and No Name 
+    to numerical values'''
     if type(x) == float:
         return 0
     else:
         return 1
     
 def convert_subtype(data_train):
+    '''Convert OutcomeSubtype into numerical values'''
     subtype_unique = list(data_train['OutcomeSubtype'].unique())
     subtype_mapping = {}
     for i, item in enumerate(subtype_unique):
@@ -63,6 +68,9 @@ def convert_subtype(data_train):
     return data_train, subtype_mapping
 
 def datetime_str_converter(data_train):
+    '''This method converts the datetime input into year and month in
+    string format. The below method is identical except it returns numerical
+    value. The string format is used for graphing with countplot'''
     datetime = list(data_train['DateTime'])
     year_list, month_list = [], []
     for item in datetime:
@@ -71,6 +79,7 @@ def datetime_str_converter(data_train):
     return year_list, month_list
     
 def datetime_converter(data_train):
+    '''Convert date time into year and month'''
     datetime = list(data_train['DateTime'])
     year_list, month_list = [], []
     for item in datetime:
@@ -79,6 +88,7 @@ def datetime_converter(data_train):
     return year_list, month_list
 
 def season_sort(month_list):
+    '''Converts month information to season information'''
     season_list = []
     for item in month_list:
         if item == 12 or item == 1 or item == 2:
@@ -91,13 +101,9 @@ def season_sort(month_list):
             season_list.append('fall')
     return season_list
 
-def datetime_outcome(data_train):
-    #plt.figure()
-    #datetime_groupby = pd.DataFrame(data_train.groupby(['OutcomeYear', 'OutcomeMonth', 'OutcomeType'])['OutcomeType'].size())
-    pass
-
 def convert_Age(data_train):
     '''Reference: https://stackoverflow.com/questions/12851791/removing-numbers-from-string'''
+    '''This function convert all the time into unit of day'''
     age_list = list(data_train['AgeuponOutcome'])
     age_day_compile = []
     for item in age_list:
@@ -116,22 +122,14 @@ def convert_Age(data_train):
     return age_day_compile 
 
 def convert_sex(data_train):
+    '''This function converts sexual orientation into simple neutered, intact, unknown cases'''
     sexOutcome_mapping = {'Neutered Male':1, 'Spayed Female':1, 'Intact Male':2, 'Intact Female':2, 
                           'Unknown':0} 
     data_train['SexuponOutcome'] = data_train['SexuponOutcome'].map(sexOutcome_mapping)
     return data_train, sexOutcome_mapping
 
-def remove_mix(data_train):
-    breed_list = list(data_train['Breed'])
-    breed_compile = []
-    for item in breed_list:
-        item = item.lower()
-        if 'mix' in item:
-            item = item[:-4]
-        breed_compile.append(item)
-    return breed_compile
-
 def dog_breed_category(data_train):
+    '''This function converts the breed into pure mix, mix or pure'''
     breed_df = data_train[['OutcomeType', 'AnimalType', 'Breed']]
     breed_df_dog = breed_df[breed_df.AnimalType == 'Dog'].reset_index()
     breed_list = list(breed_df_dog['Breed'])
@@ -147,6 +145,85 @@ def dog_breed_category(data_train):
     breed_df_dog['Breed_dog'] = breed_compile
     return breed_df_dog
     
+def dog_size_crawler(url, selector):
+    '''This is one of the two functions used for crawlign dog size'''
+    res = requests.get(url)
+    soup = BeautifulSoup(res.content, 'html.parser')
+    dog_list = soup.select(selector)
+    compile_list = []
+    for dog in dog_list:
+        compile_list.append(dog.get_text().lower())
+    return compile_list
+
+def dog_size_compile(url_list, selector):
+    '''This is second functions used for crawlign dog size'''
+    list_compile = []
+    for url in url_list:
+        crawler_list = dog_size_crawler(url, selector)
+        list_compile += crawler_list
+    return list_compile
+
+def remove_mix(data_train):
+    '''This function removes the keyword mix from breed list. The result from
+    this method is used when converting breed into different categories'''
+    breed_list = list(data_train['Breed'])
+    breed_compile = []
+    for item in breed_list:
+        item = item.lower()
+        if 'mix' in item:
+            item = item[:-4]
+        breed_compile.append(item)
+    return breed_compile
+
+def convert_breed_dog(type_list, breed_list, small_list, medium_list, large_list, giant_list):
+    '''The incoming list a list of breeds with the keyword "mix" removed and converted
+    to lower case. No need for extra preprocessing. Also the dog lists are all converted
+    to lower case as well. Type list is to check whether the breed belongs to dog or cat'''
+    if len(type_list) != len(breed_list):
+        print('Two lists must have equal length!')
+        return None
+    
+    breed_compile, excluded_list, mix_breed_list, cat_breed_list = [], [], [], []
+    filled = False
+    for animal_type, breed in zip(type_list, breed_list):
+        if '/' in breed:
+            mix_breed_list.append(breed)
+            breed_compile.append(breed)
+        elif animal_type == 0:
+            cat_breed_list.append(breed)
+            breed_compile.append(breed)
+        elif animal_type == 1:
+            for small_item in small_list:
+                if breed in small_item:
+                    breed_compile.append('small')
+                    filled = True
+            for medium_item in medium_list:
+                if breed in medium_item:
+                    breed_compile.append('medium')
+                    filled= True
+            for large_item in large_list:
+                if breed in large_item:
+                    breed_compile.append('large')
+                    filled = True
+            for giant_item in giant_list:
+                if breed in giant_item:
+                    breed_compile.append('giant')
+                    filled = True
+            if filled == False:
+                excluded_list.append(breed)
+                breed_compile.append(breed)
+        filled = False
+    return breed_compile, excluded_list, mix_breed_list, cat_breed_list
+    
+def cat_unique(data_train):
+    '''This function is used to identify unique breeds of cats'''
+    cat_df = data_train[['AnimalType', 'Breed']]
+    cat_df_filtered = cat_df[cat_df.AnimalType == 'Cat']
+    cat_unique_list = list(cat_df_filtered['Breed'].unique())
+    return cat_unique_list
+###############################################################################
+###############################################################################
+
 data_train = pd.read_csv('train.csv')
 '''Keep a copy of the original data for comparison'''
 data_original = data_train.copy()
@@ -170,6 +247,8 @@ data_inter['OutcomeSeason'] = season_list
 '''Classify the Outcome via larger category of dog breed'''
 breed_df_dog = dog_breed_category(data_inter)
 
+###############################################################################
+###############################################################################
 
 '''Graph some useful charts using Seaborn countplot'''
 '''1) Relationship b/t sexual orientation and the outcome'''
@@ -202,6 +281,46 @@ sns.countplot(x = 'OutcomeSubtype', hue = 'OutcomeType', data = data_inter)
 '''Outcome via larger breed cateogyr'''
 plt.figure()
 sns.countplot(x = 'Breed_dog', hue = 'OutcomeType', data = breed_df_dog)
+
+###############################################################################
+###############################################################################
+'''This section is for crawling the dog size list'''
+
+'''Extract list of dogs for different sizes'''
+small_url_list = ['http://www.dogbreedslist.info/small-dog-breeds/list_2_1.html#.Wfx1Mmi0NPY', 
+                'http://www.dogbreedslist.info/small-dog-breeds/list_2_2.html#.Wfx1Mmi0NPY', 
+                'http://www.dogbreedslist.info/small-dog-breeds/list_2_3.html#.Wfx1Mmi0NPY', 
+                'http://www.dogbreedslist.info/small-dog-breeds/list_2_4.html#.Wfx1Mmi0NPY', 
+                'http://www.dogbreedslist.info/small-dog-breeds/list_2_5.html#.Wfx1Mmi0NPY',
+                'http://www.dogbreedslist.info/small-dog-breeds/list_2_6.html#.Wfx1Mmi0NPY']
+
+selector = 'body > div.main > div.main-r > div > div.list-01 > div.right > div.right-t > p > a'
+small_dog_compile = dog_size_compile(small_url_list, selector)
+
+medium_url_list = ['http://www.dogbreedslist.info/medium-dog-breeds/list_3_1.html#.Wfx3bmi0NPY',
+                   'http://www.dogbreedslist.info/medium-dog-breeds/list_3_2.html#.Wfx3bmi0NPY',
+                   'http://www.dogbreedslist.info/medium-dog-breeds/list_3_3.html#.Wfx3bmi0NPY', 
+                   'http://www.dogbreedslist.info/medium-dog-breeds/list_3_4.html#.Wfx3bmi0NPY',
+                   'http://www.dogbreedslist.info/medium-dog-breeds/list_3_5.html#.Wfx3bmi0NPY',
+                   'http://www.dogbreedslist.info/medium-dog-breeds/list_3_6.html#.Wfx3bmi0NPY']
+
+selector = 'body > div.main > div.main-r > div > div.list-01 > div.right > div.right-t > p > a'
+medium_dog_compile = dog_size_compile(medium_url_list, selector)
+
+large_url_list = ['http://www.dogbreedslist.info/large-dog-breeds/list_4_1.html#.Wfx9nWi0NPY',
+                   'http://www.dogbreedslist.info/large-dog-breeds/list_4_2.html#.Wfx9nWi0NPY',
+                   'http://www.dogbreedslist.info/large-dog-breeds/list_4_3.html#.Wfx9nWi0NPY', 
+                   'http://www.dogbreedslist.info/large-dog-breeds/list_4_4.html#.Wfx9nWi0NPY',
+                   'http://www.dogbreedslist.info/large-dog-breeds/list_4_5.html#.Wfx9nWi0NPY',
+                   'http://www.dogbreedslist.info/large-dog-breeds/list_4_6.html#.Wfx9nWi0NPY']
+
+selector = 'body > div.main > div.main-r > div > div.list-01 > div.right > div.right-t > p > a'
+large_dog_compile = dog_size_compile(large_url_list, selector)
+
+giant_url_list = ['http://www.dogbreedslist.info/giant-dog-breeds/list_5_1.html#.Wfx9nWi0NPY',]
+
+selector = 'body > div.main > div.main-r > div > div.list-01 > div.right > div.right-t > p > a'
+giant_dog_compile = dog_size_compile(giant_url_list, selector)
 
 ###############################################################################
 ###############################################################################
@@ -270,3 +389,13 @@ data_train['AgeuponOutcome'] = age_day_compile
 Unknowns will be left as unknowns'''
 data_train, sexOutcome_mapping = convert_sex(data_train)
 
+'''Create a column that converts Breed into size category'''
+'''First remove the string "mix" from breed category'''
+breed_remove_mix = remove_mix(data_train)
+type_list = list(data_train['AnimalType'])
+'''Compare the breed in the data to crawled size lists and create a list indicating
+the size of each breed. By zipping two lists, we can also ignore species that
+belong to cats.'''
+convert_dog_list, excluded_list, mix_breed_list, cat_breed_list = convert_breed_dog(type_list, 
+                                     breed_remove_mix, small_dog_compile, 
+                                     medium_dog_compile, large_dog_compile, giant_dog_compile)
