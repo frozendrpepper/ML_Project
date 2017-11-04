@@ -176,6 +176,9 @@ def remove_mix(data_train):
     return breed_compile
 
 def convert_breed_dog(type_list, breed_list, small_list, medium_list, large_list, giant_list):
+    '''Reference: https://stackoverflow.com/questions/16380326/check-if-substring-is-in-a-list-of-strings
+    that is a really smart and succinct solution for checking substring existence in a list of strings'''
+    
     '''The incoming list a list of breeds with the keyword "mix" removed and converted
     to lower case. No need for extra preprocessing. Also the dog lists are all converted
     to lower case as well. Type list is to check whether the breed belongs to dog or cat'''
@@ -183,8 +186,13 @@ def convert_breed_dog(type_list, breed_list, small_list, medium_list, large_list
         print('Two lists must have equal length!')
         return None
     
+    '''Convert the list into a string format for easier processing'''
+    small_combined = '\t'.join(small_list)
+    medium_combined = '\t'.join(medium_list)
+    large_combined = '\t'.join(large_list)
+    giant_combined = '\t'.join(giant_list)
+    
     breed_compile, excluded_list, mix_breed_list, cat_breed_list = [], [], [], []
-    filled = False
     for animal_type, breed in zip(type_list, breed_list):
         if '/' in breed:
             mix_breed_list.append(breed)
@@ -193,26 +201,17 @@ def convert_breed_dog(type_list, breed_list, small_list, medium_list, large_list
             cat_breed_list.append(breed)
             breed_compile.append(breed)
         elif animal_type == 1:
-            for small_item in small_list:
-                if breed in small_item:
-                    breed_compile.append('small')
-                    filled = True
-            for medium_item in medium_list:
-                if breed in medium_item:
-                    breed_compile.append('medium')
-                    filled= True
-            for large_item in large_list:
-                if breed in large_item:
-                    breed_compile.append('large')
-                    filled = True
-            for giant_item in giant_list:
-                if breed in giant_item:
-                    breed_compile.append('giant')
-                    filled = True
-            if filled == False:
+            if breed in small_combined:
+                breed_compile.append('small')
+            elif breed in medium_combined:
+                breed_compile.append('medium')
+            elif breed in large_combined:
+                breed_compile.append('large')
+            elif breed in giant_combined:
+                breed_compile.append('giant')
+            else:
                 excluded_list.append(breed)
                 breed_compile.append(breed)
-        filled = False
     return breed_compile, excluded_list, mix_breed_list, cat_breed_list
     
 def cat_unique(data_train):
@@ -305,7 +304,7 @@ medium_url_list = ['http://www.dogbreedslist.info/medium-dog-breeds/list_3_1.htm
                    'http://www.dogbreedslist.info/medium-dog-breeds/list_3_6.html#.Wfx3bmi0NPY']
 
 selector = 'body > div.main > div.main-r > div > div.list-01 > div.right > div.right-t > p > a'
-medium_dog_compile = dog_size_compile(medium_url_list, selector)
+medium_dog_compile = dog_size_compile(medium_url_list, selector) + ['treeing cur', 'treeing tennesse brindle']
 
 large_url_list = ['http://www.dogbreedslist.info/large-dog-breeds/list_4_1.html#.Wfx9nWi0NPY',
                    'http://www.dogbreedslist.info/large-dog-breeds/list_4_2.html#.Wfx9nWi0NPY',
@@ -315,7 +314,7 @@ large_url_list = ['http://www.dogbreedslist.info/large-dog-breeds/list_4_1.html#
                    'http://www.dogbreedslist.info/large-dog-breeds/list_4_6.html#.Wfx9nWi0NPY']
 
 selector = 'body > div.main > div.main-r > div > div.list-01 > div.right > div.right-t > p > a'
-large_dog_compile = dog_size_compile(large_url_list, selector)
+large_dog_compile = dog_size_compile(large_url_list, selector) + ['schnauzer giant', 'olde english bulldogge']
 
 giant_url_list = ['http://www.dogbreedslist.info/giant-dog-breeds/list_5_1.html#.Wfx9nWi0NPY',]
 
@@ -392,10 +391,82 @@ data_train, sexOutcome_mapping = convert_sex(data_train)
 '''Create a column that converts Breed into size category'''
 '''First remove the string "mix" from breed category'''
 breed_remove_mix = remove_mix(data_train)
+
+'''This preprocessing was done to match some of the names that were different 
+from the list obtained on the website'''
+for index, item in enumerate(breed_remove_mix):
+    if item == 'chihuahua shorthair':
+        breed_remove_mix[index] = 'chihuahua'
+    elif item == 'collie smooth':
+        breed_remove_mix[index] = 'collie'
+    elif item == 'anatol shepherd':
+        breed_remove_mix[index] = 'anatolian shepherd dog'
+    elif item == 'port water dog':
+        breed_remove_mix[index] = 'portuguese water dog'
+    elif item == 'flat coat retriever':
+        breed_remove_mix[index] = 'flat-coated retriever'
+    elif item == 'pbgv':
+        breed_remove_mix[index] = 'petit basset griffon vendeen'
+    elif item == 'bruss griffon':
+        breed_remove_mix[index] = 'brussels griffon'
+    elif item == 'bluetick hound':
+        breed_remove_mix[index] = 'bluetick coonhound'
+    elif item == 'wire hair fox terrier':
+        breed_remove_mix[index] = 'wire fox terrier'
+    elif item == 'dachshund wirehair':
+        breed_remove_mix[index] = 'dachshund'
+    elif item == 'rhod ridgeback':
+        breed_remove_mix[index] = 'rhodesian ridgeback'
+    elif item == 'picardy sheepdog':
+        breed_remove_mix[index] = 'berger picard'
+    elif item == 'st. bernard rough coat':
+        breed_remove_mix[index] = 'st. bernard'
+    elif item == 'old english bulldog':
+        breed_remove_mix[index] = 'olde english bulldogge'
+    elif item == 'english bulldog':
+        breed_remove_mix[index] = 'olde english bulldogge'
+    elif item == 'chesa bay retr':
+        breed_remove_mix[index] = 'chesapeake bay retriever'
+    elif item == 'dachshund longhair':
+        breed_remove_mix[index] = 'dachshund'
+    elif item == 'chihuahua longhair':
+        breed_remove_mix[index] = 'chihuahua'
+    elif item == 'chinese sharpei':
+        breed_remove_mix[index] = 'shar-pei'
+    elif item == 'standard poodle':
+        breed_remove_mix[index] = 'poodle'
+    elif item == 'bull terrier miniature':
+        breed_remove_mix[index] = 'miniature bull terrier'
+    elif item =='st. bernard smooth coat':
+        breed_remove_mix[index] = 'st. bernard'
+    elif item =='redbone hound':
+        breed_remove_mix[index] = 'redbone coonhound'
+    elif item == 'cavalier span':
+        breed_remove_mix[index] = 'cavalier king charles spaniel'
+    elif item == 'collie rough':
+        breed_remove_mix[index] = 'collie'
+    elif item == 'german shorthair pointer':
+        breed_remove_mix[index] = 'german shorthaired pointer'
+    elif item == 'english pointer':
+        breed_remove_mix[index] = 'pointer'
+    elif item == 'mexican hairless':
+        breed_remove_mix[index] = 'xoloitzcuintli'
+    elif item =='dogo argentino':
+        breed_remove_mix[index] = 'argentine dogo'
+    elif item == 'queensland heeler':
+        breed_remove_mix[index] = 'australian cattle dog'
+    
+
 type_list = list(data_train['AnimalType'])
 '''Compare the breed in the data to crawled size lists and create a list indicating
 the size of each breed. By zipping two lists, we can also ignore species that
-belong to cats.'''
+belong to cats. Some breed names were manually modified to fit the crawled list'''
 convert_dog_list, excluded_list, mix_breed_list, cat_breed_list = convert_breed_dog(type_list, 
                                      breed_remove_mix, small_dog_compile, 
                                      medium_dog_compile, large_dog_compile, giant_dog_compile)
+
+'''Some animals came out excluded. Let us find out which species and add their information manually'''
+excluded_unique = list(set(excluded_list))
+
+'''Whew finally add the cleansed convert_dog_list to our data_train DataFrame'''
+data_train['Size'] = convert_dog_list
