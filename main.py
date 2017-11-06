@@ -145,21 +145,21 @@ def dog_breed_category(data_train):
     breed_df_dog['Breed_dog'] = breed_compile
     return breed_df_dog
     
-def dog_size_crawler(url, selector):
-    '''This is one of the two functions used for crawlign dog size'''
+def size_crawler(url, selector):
+    '''This is one of the two functions used for crawlign cat/dog size'''
     res = requests.get(url)
     soup = BeautifulSoup(res.content, 'html.parser')
-    dog_list = soup.select(selector)
+    breed_list = soup.select(selector)
     compile_list = []
-    for dog in dog_list:
-        compile_list.append(dog.get_text().lower())
+    for breed in breed_list:
+        compile_list.append(breed.get_text().lower())
     return compile_list
 
-def dog_size_compile(url_list, selector):
-    '''This is second functions used for crawlign dog size'''
+def size_compile(url_list, selector):
+    '''This is second functions used for crawlign cat/dog size'''
     list_compile = []
     for url in url_list:
-        crawler_list = dog_size_crawler(url, selector)
+        crawler_list = size_crawler(url, selector)
         list_compile += crawler_list
     return list_compile
 
@@ -175,7 +175,8 @@ def remove_mix(data_train):
         breed_compile.append(item)
     return breed_compile
 
-def convert_breed_dog(type_list, breed_list, small_list, medium_list, large_list, giant_list):
+def convert_breed(type_list, breed_list, small_list, medium_list, large_list, giant_list,
+                  small_cat_list, medium_cat_list, large_cat_list, domestic_cat_list):
     '''Reference: https://stackoverflow.com/questions/16380326/check-if-substring-is-in-a-list-of-strings
     that is a really smart and succinct solution for checking substring existence in a list of strings'''
     
@@ -194,13 +195,20 @@ def convert_breed_dog(type_list, breed_list, small_list, medium_list, large_list
     
     breed_compile, excluded_list, mix_breed_list, cat_breed_list = [], [], [], []
     for animal_type, breed in zip(type_list, breed_list):
-        if '/' in breed:
+        if '/' in breed: #Mixed type categorization
             mix_breed_list.append(breed)
-            breed_compile.append(breed)
-        elif animal_type == 0:
+            breed_compile.append('mix')
+        elif animal_type == 0: #Cat breed categorization
             cat_breed_list.append(breed)
-            breed_compile.append(breed)
-        elif animal_type == 1:
+            if breed in small_cat_list:
+                breed_compile.append('small')
+            elif breed in medium_cat_list:
+                breed_compile.append('medium')
+            elif breed in large_cat_list:
+                breed_compile.append('large')
+            elif breed in domestic_cat_list:
+                breed_compile.append('domestic')
+        elif animal_type == 1: #Dog breed categorization
             if breed in small_combined:
                 breed_compile.append('small')
             elif breed in medium_combined:
@@ -211,15 +219,8 @@ def convert_breed_dog(type_list, breed_list, small_list, medium_list, large_list
                 breed_compile.append('giant')
             else:
                 excluded_list.append(breed)
-                breed_compile.append(breed)
+                breed_compile.append('unknown')
     return breed_compile, excluded_list, mix_breed_list, cat_breed_list
-    
-def cat_unique(data_train):
-    '''This function is used to identify unique breeds of cats'''
-    cat_df = data_train[['AnimalType', 'Breed']]
-    cat_df_filtered = cat_df[cat_df.AnimalType == 'Cat']
-    cat_unique_list = list(cat_df_filtered['Breed'].unique())
-    return cat_unique_list
 ###############################################################################
 ###############################################################################
 
@@ -294,7 +295,7 @@ small_url_list = ['http://www.dogbreedslist.info/small-dog-breeds/list_2_1.html#
                 'http://www.dogbreedslist.info/small-dog-breeds/list_2_6.html#.Wfx1Mmi0NPY']
 
 selector = 'body > div.main > div.main-r > div > div.list-01 > div.right > div.right-t > p > a'
-small_dog_compile = dog_size_compile(small_url_list, selector)
+small_dog_compile = size_compile(small_url_list, selector)
 
 medium_url_list = ['http://www.dogbreedslist.info/medium-dog-breeds/list_3_1.html#.Wfx3bmi0NPY',
                    'http://www.dogbreedslist.info/medium-dog-breeds/list_3_2.html#.Wfx3bmi0NPY',
@@ -304,7 +305,7 @@ medium_url_list = ['http://www.dogbreedslist.info/medium-dog-breeds/list_3_1.htm
                    'http://www.dogbreedslist.info/medium-dog-breeds/list_3_6.html#.Wfx3bmi0NPY']
 
 selector = 'body > div.main > div.main-r > div > div.list-01 > div.right > div.right-t > p > a'
-medium_dog_compile = dog_size_compile(medium_url_list, selector) + ['treeing cur', 'treeing tennesse brindle']
+medium_dog_compile = size_compile(medium_url_list, selector) + ['treeing cur', 'treeing tennesse brindle']
 
 large_url_list = ['http://www.dogbreedslist.info/large-dog-breeds/list_4_1.html#.Wfx9nWi0NPY',
                    'http://www.dogbreedslist.info/large-dog-breeds/list_4_2.html#.Wfx9nWi0NPY',
@@ -314,13 +315,12 @@ large_url_list = ['http://www.dogbreedslist.info/large-dog-breeds/list_4_1.html#
                    'http://www.dogbreedslist.info/large-dog-breeds/list_4_6.html#.Wfx9nWi0NPY']
 
 selector = 'body > div.main > div.main-r > div > div.list-01 > div.right > div.right-t > p > a'
-large_dog_compile = dog_size_compile(large_url_list, selector) + ['schnauzer giant', 'olde english bulldogge']
+large_dog_compile = size_compile(large_url_list, selector) + ['schnauzer giant', 'olde english bulldogge']
 
 giant_url_list = ['http://www.dogbreedslist.info/giant-dog-breeds/list_5_1.html#.Wfx9nWi0NPY',]
 
 selector = 'body > div.main > div.main-r > div > div.list-01 > div.right > div.right-t > p > a'
-giant_dog_compile = dog_size_compile(giant_url_list, selector)
-
+giant_dog_compile = size_compile(giant_url_list, selector)
 ###############################################################################
 ###############################################################################
 
@@ -455,18 +455,66 @@ for index, item in enumerate(breed_remove_mix):
         breed_remove_mix[index] = 'argentine dogo'
     elif item == 'queensland heeler':
         breed_remove_mix[index] = 'australian cattle dog'
+        
+'''breed_remove_mix list now contains all the corrected dog breed name'''
     
+'''Based on some analysis, also convert cats into different sizes'''
+'''Since there are not that many unique species of cat, it might be faster to compile
+size lists manually. The category of size of cats will consist of small, medium and large'''
+'''Reference: http://www.petguide.com/breeds/cat/domestic-longhair/
+Domestic species are the most popular and abundant and they are of mixed ancestry. Consequently,
+they are difficult to define in one size category and I will put them under domestic category'''
+small_cat_list = ['munchkin longhair', ]
+medium_cat_list = ['exotic shorthair', 'persian', 'abyssinian', 'sphynx', 'siamese',
+                   'cornish rex', 'devon rex', 'burmese', 'tonkinese', 'russian blue', 
+                   'manx', 'japanese bobtail', 'balinese', 'bombay', 'havana brown',
+                   'bengal', 'cymric', 'himalayan', 'snowshoe', 'javanese', 'havana brown', 'angora']
+large_cat_list = ['american shorthair', 'british shorthair', 'norwegian forest cat', 'ocicat',
+                  'turkish van', 'pixiebob shorthair', 'maine coon', 'ragdoll']
+domestic = ['domestic longhair', 'domestic medium hair', 'domestic shorthair']
 
-type_list = list(data_train['AnimalType'])
 '''Compare the breed in the data to crawled size lists and create a list indicating
 the size of each breed. By zipping two lists, we can also ignore species that
 belong to cats. Some breed names were manually modified to fit the crawled list'''
-convert_dog_list, excluded_list, mix_breed_list, cat_breed_list = convert_breed_dog(type_list, 
-                                     breed_remove_mix, small_dog_compile, 
-                                     medium_dog_compile, large_dog_compile, giant_dog_compile)
+type_list = list(data_train['AnimalType'])
 
-'''Some animals came out excluded. Let us find out which species and add their information manually'''
-excluded_unique = list(set(excluded_list))
+convert_list, excluded_list_dog, mix_breed_list_dog, cat_breed_list = convert_breed(type_list, 
+                                     breed_remove_mix, small_dog_compile, 
+                                     medium_dog_compile, large_dog_compile, giant_dog_compile,
+                                     small_cat_list, medium_cat_list, large_cat_list, domestic)
+
+'''Some animals came out excluded. Let us find out which species and add their information manually.
+This list was used to make corrections for dog breed name in the above code. It should now only
+contain unknown values.'''
+excluded_unique_dog = list(set(excluded_list_dog))
 
 '''Whew finally add the cleansed convert_dog_list to our data_train DataFrame'''
-data_train['Size'] = convert_dog_list
+data_train['Size'] = convert_list
+
+'''Now let us apply the same size conversion for cats as well. First find out how many unique cat breeds
+are present from the cat_breed_list derived from convert_breed_dog function. This list was used to manually
+construct the conversion lists for cats in the above code.'''
+cat_unique = list(set(cat_breed_list))
+
+'''Confirm that only expected values small, medium, large, giant, unknown and domestic
+are present in the Size column'''
+size_check_list = list(data_train['Size'].unique())
+
+
+'''Another preprocessing portion
+
+For breed -> Create 2 columns -> main_breed, sub_breed
+There are some species with 3 mixes, but there are only 10 of them so we'll
+just consider main and sub breeds.
+
+For color -> Create 2 columns -> main_color, sub_color
+'''
+
+'''Reference: https://stackoverflow.com/questions/2600191/how-can-i-count-the-occurrences-of-a-list-item-in-python
+Useful reference for counting number of occurences'''
+check_breed = list(data_train['Breed'])
+count = 0
+for item in check_breed:
+    if item.count('/') == 2:
+        count += 1
+'''There are only 10, so we will just ignore the third sub breed'''
