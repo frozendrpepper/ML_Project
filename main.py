@@ -221,6 +221,45 @@ def convert_breed(type_list, breed_list, small_list, medium_list, large_list, gi
                 excluded_list.append(breed)
                 breed_compile.append('unknown')
     return breed_compile, excluded_list, mix_breed_list, cat_breed_list
+
+def breed_separator(breed_remove_mix):
+    '''This function separates the breed into main and sub breed columns'''
+    main_breed, sub_breed = [], []
+    for breed in breed_remove_mix:
+        if breed.count('/') == 0:
+            main_breed.append(breed)
+            sub_breed.append(0)
+        elif breed.count('/') == 1 or breed.count('/') == 2:
+            temp_breed_list = breed.split('/')
+            main_breed.append(temp_breed_list[0])
+            sub_breed.append(temp_breed_list[1])
+    return main_breed, sub_breed
+
+def color_separator(color_list):
+    '''The function separates color into main and sub colors'''
+    main_color, sub_color = [], []
+    for color in color_list:
+        if color.count('/') == 0:
+            main_color.append(color)
+            sub_color.append(0)
+        elif color.count('/') == 1:
+            temp_color_list = color.split('/')
+            main_color.append(temp_color_list[0])
+            sub_color.append(temp_color_list[1])
+    return main_color, sub_color
+
+def breed_separator_mix(breed_remove_mix):
+    '''One information I found was that size of the dog matters a lot and,
+    in mixed breeds, it can become difficult to predict how large a dog is
+    going to be. So one strategy would be just to label mixed breeds as mix'''
+    pure_mix_compile = []
+    for breed in breed_remove_mix:
+        if breed.count('/') == 0:
+            pure_mix_compile.append(breed)
+        else:
+            pure_mix_compile.append('mix')
+    return pure_mix_compile
+            
 ###############################################################################
 ###############################################################################
 
@@ -500,6 +539,9 @@ cat_unique = list(set(cat_breed_list))
 are present in the Size column'''
 size_check_list = list(data_train['Size'].unique())
 
+'''Before we proceed let us see how result varies with respect to the size column'''
+plt.figure()
+sns.countplot(x = 'Size', hue = 'OutcomeType', data = data_train)
 
 '''Another preprocessing portion
 
@@ -518,3 +560,24 @@ for item in check_breed:
     if item.count('/') == 2:
         count += 1
 '''There are only 10, so we will just ignore the third sub breed'''
+
+'''First create columns corresponding to main and sub breeds'''
+main_breed, sub_breed = breed_separator(breed_remove_mix)
+data_train['Main_Breed'], data_train['Sub_Breed'] = main_breed, sub_breed
+
+'''Then create columns corresponding to main and sub colors'''
+color_list = list(data_train['Color'])
+main_color, sub_color = color_separator(color_list)
+data_train['Main_Color'], data_train['Sub_Color'] = main_color, sub_color
+
+'''Tried another strategy with how to separate. Basically, mixed breeds are labeled
+as mix.'''
+pure_mix_compile = breed_separator_mix(breed_remove_mix)
+data_train['Mix_Breed'] = pure_mix_compile
+
+
+
+###############################################################################
+'''The preprocessing portion is complete for now. Codes below will be implementation
+of various decision tree based algorithms such as random forest, adaboost, XGboost'''
+###############################################################################
