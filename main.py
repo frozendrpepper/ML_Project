@@ -603,7 +603,7 @@ dfX = pd.concat([dfX, main_color_le, year_le, month_le], axis = 1)
 dfY = data_train_le['OutcomeType']
 
 '''Fuck it let us give Xgboost a try'''
-model_xgb = xgboost.XGBClassifier(n_estimators=1000, max_depth=3)
+model_xgb = xgboost.XGBClassifier(n_estimators=1000, max_depth=2)
 model_xgb.fit(dfX, dfY)
 
 y_pred = model_xgb.predict(dfX)
