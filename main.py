@@ -8,11 +8,14 @@ Created on Wed Nov  1 12:01:28 2017
 '''Import all the necessary packages'''
 from sklearn.cross_validation import KFold, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LinearRegression, Lasso, Ridge, ElasticNet, LogisticRegression
-#from sklearn.cross_validation import train_test_split
-#from sklearn.preprocessing import Imputer, OneHotEncoder, LabelEncoder
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-from sklearn.metrics import r2_score
+from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import Imputer, OneHotEncoder, LabelEncoder
+from sklearn.metrics import classification_report, confusion_matrix, roc_curve
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.ensemble import AdaBoostClassifier
+import xgboost
 
 from patsy import dmatrix
 from scipy import stats
@@ -391,7 +394,9 @@ outcome_mapping = {'Return_to_owner':1, 'Euthanasia':2, 'Adoption':3, 'Transfer'
 data_train['OutcomeType'] = data_train['OutcomeType'].map(outcome_mapping)
 
 '''Year and Month information extraction'''
+'''Make columns in both string an integer format as this will be useful later on'''
 year_list, month_list = datetime_str_converter(data_train)
+data_train['OutcomeYearstr'], data_train['OutcomeMonthstr'] = year_list, month_list
 date_list = []
 for year, month in zip(year_list, month_list):
     date_list.append(int(year + month))
@@ -541,7 +546,7 @@ size_check_list = list(data_train['Size'].unique())
 
 '''Before we proceed let us see how result varies with respect to the size column'''
 plt.figure()
-sns.countplot(x = 'Size', hue = 'OutcomeType', data = data_train)
+sns.factorplot(x = 'AnimalType', hue = 'Size', col = 'OutcomeType', data = data_train, kind = 'count')
 
 '''Another preprocessing portion
 
@@ -575,9 +580,31 @@ as mix.'''
 pure_mix_compile = breed_separator_mix(breed_remove_mix)
 data_train['Mix_Breed'] = pure_mix_compile
 
+'''Let us first apply label encoding for all the string valued columns'''
+size_mapping = {'unknown': 0, 'small':1, 'medium':2, 'giant':3, 'large':4, 'domestic':5, 'mix':6}
+data_train_le = data_train.copy()
+data_train_le['Size'] = data_train_le['Size'].map(size_mapping)
 
+'''The get_dummies method is mentioned in Python Learning by Sebastian Raschka.
+It is much more convenient than one hot encoding IMO. This only works for strings btw.'''
+main_color_le = pd.get_dummies(data_train_le[['Main_Color']])
+main_breed_le = pd.get_dummies(data_train_le[['Main_Breed']])
+year_le = pd.get_dummies(data_train_le[['OutcomeYearstr']])
+month_le = pd.get_dummies(data_train_le[['OutcomeMonthstr']])
 
 ###############################################################################
 '''The preprocessing portion is complete for now. Codes below will be implementation
 of various decision tree based algorithms such as random forest, adaboost, XGboost'''
 ###############################################################################
+'''Let us first run a simple case using RandomForest'''
+dfX = data_train_le[['Name', 'OutcomeSubtype', 'AnimalType', 'SexuponOutcome', 
+                     'AgeuponOutcome', 'Size']]
+dfX = pd.concat([dfX, main_color_le, year_le, month_le], axis = 1)
+dfY = data_train_le['OutcomeType']
+
+'''Fuck it let us give Xgboost a try'''
+model_xgb = xgboost.XGBClassifier(n_estimators=1000, max_depth=3)
+model_xgb.fit(dfX, dfY)
+
+y_pred = model_xgb.predict(dfX)
+print(classification_report(dfY, y_pred))
