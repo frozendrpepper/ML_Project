@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cross_validation import train_test_split
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import Imputer, OneHotEncoder, LabelEncoder
-from sklearn.metrics import classification_report, confusion_matrix, roc_curve
+from sklearn.metrics import classification_report, confusion_matrix, roc_curve, accuracy_score, log_loss
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from sklearn.ensemble import AdaBoostClassifier
@@ -384,6 +384,7 @@ data_train['OutcomeSubtype'] = data_train['OutcomeSubtype'].fillna(0)
 
 '''Drop all nan values in other columns'''
 data_train = data_train.dropna()
+data_inter = data_inter.dropna()
 
 '''Animal mapping'''
 animal_type_mapping = {'Dog':1, 'Cat':0}
@@ -591,20 +592,28 @@ main_color_le = pd.get_dummies(data_train_le[['Main_Color']])
 main_breed_le = pd.get_dummies(data_train_le[['Main_Breed']])
 year_le = pd.get_dummies(data_train_le[['OutcomeYearstr']])
 month_le = pd.get_dummies(data_train_le[['OutcomeMonthstr']])
+outcomesub_le = pd.get_dummies(data_inter[['OutcomeSubtype']])
+size_le = pd.get_dummies(data_train['Size'])
+sex_le = pd.get_dummies(data_inter['SexuponOutcome'])
 
 ###############################################################################
 '''The preprocessing portion is complete for now. Codes below will be implementation
 of various decision tree based algorithms such as random forest, adaboost, XGboost'''
 ###############################################################################
 '''Let us first run a simple case using RandomForest'''
-dfX = data_train_le[['Name', 'OutcomeSubtype', 'AnimalType', 'SexuponOutcome', 
-                     'AgeuponOutcome', 'Size']]
-dfX = pd.concat([dfX, main_color_le, year_le, month_le], axis = 1)
+dfX = data_train_le[['Name', 'AnimalType', 
+                     'AgeuponOutcome']]
+dfX = pd.concat([dfX, main_color_le, year_le, month_le, size_le, outcomesub_le, sex_le], axis = 1)
 dfY = data_train_le['OutcomeType']
 
-'''Fuck it let us give Xgboost a try'''
-model_xgb = xgboost.XGBClassifier(n_estimators=1000, max_depth=2)
-model_xgb.fit(dfX, dfY)
+dfX_train, dfX_test, dfY_train, dfY_test = train_test_split(dfX, dfY, test_size = 0.2, random_state=0)
 
-y_pred = model_xgb.predict(dfX)
-print(classification_report(dfY, y_pred))
+'''Fuck it let us give Xgboost a try'''
+model_xgb = xgboost.XGBClassifier(n_estimators=100, max_depth=3)
+model_xgb.fit(dfX_train, dfY_train)
+
+y_pred = model_xgb.predict(dfX_test)
+print(classification_report(dfY_test, y_pred))
+
+y_proba = model_xgb.predict_proba(dfX_test)
+performance = log_loss(dfY_test, y_proba)
