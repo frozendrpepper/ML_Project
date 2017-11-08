@@ -612,8 +612,43 @@ dfX_train, dfX_test, dfY_train, dfY_test = train_test_split(dfX, dfY, test_size 
 model_xgb = xgboost.XGBClassifier(n_estimators=100, max_depth=3)
 model_xgb.fit(dfX_train, dfY_train)
 
-y_pred = model_xgb.predict(dfX_test)
-print(classification_report(dfY_test, y_pred))
+'''Train set accuracy'''
+y_pred_train = model_xgb.predict(dfX_train)
+print(classification_report(dfY_train, y_pred_train))
 
+'Test set accuracy'''
+y_pred_test = model_xgb.predict(dfX_test)
+print(classification_report(dfY_test, y_pred_test))
+
+'''Reference:https://www.kaggle.com/c/shelter-animal-outcomes/discussion/22119'''
+'''This reference mentions the data exploit and how it affected the result'''
 y_proba = model_xgb.predict_proba(dfX_test)
 performance = log_loss(dfY_test, y_proba)
+
+###############################################################################
+'''Aite the result was good. Let us look at how random forest performs'''
+random_model =  RandomForestClassifier(max_depth=20, n_estimators=50)
+random_model.fit(dfX_train, dfY_train)
+
+y_pred_train2 = random_model.predict(dfX_train)
+print(classification_report(dfY_train, y_pred_train2))
+
+y_pred_test2 = random_model.predict(dfX_test)
+print(classification_report(dfY_test, y_pred_test2))
+
+y_proba2 = random_model.predict_proba(dfX_test)
+performance2 = log_loss(dfY_test, y_proba2)
+
+###############################################################################
+'''Extraforest algorithm'''
+extra_model = ExtraTreesClassifier(max_depth=20, n_estimators=50)
+extra_model.fit(dfX_train, dfY_train)
+ 
+y_pred_train3 = extra_model.predict(dfX_train)
+print(classification_report(dfY_train, y_pred_train3))
+ 
+y_pred_test3 = extra_model.predict(dfX_test)
+print(classification_report(dfY_test, y_pred_test3))
+
+y_proba3 = extra_model.predict_proba(dfX_test)
+performance3 = log_loss(dfY_test, y_proba3)
