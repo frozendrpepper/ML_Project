@@ -12,9 +12,9 @@ from sklearn.cross_validation import train_test_split
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import Imputer, OneHotEncoder, LabelEncoder
 from sklearn.metrics import classification_report, confusion_matrix, roc_curve, accuracy_score, log_loss
+from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
-from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, AdaBoostClassifier
 import xgboost
 
 from patsy import dmatrix
@@ -204,11 +204,11 @@ def convert_breed(type_list, breed_list, small_list, medium_list, large_list, gi
         elif animal_type == 0: #Cat breed categorization
             cat_breed_list.append(breed)
             if breed in small_cat_list:
-                breed_compile.append('small')
+                breed_compile.append('small_cat')
             elif breed in medium_cat_list:
-                breed_compile.append('medium')
+                breed_compile.append('medium_cat')
             elif breed in large_cat_list:
-                breed_compile.append('large')
+                breed_compile.append('large_cat')
             elif breed in domestic_cat_list:
                 breed_compile.append('domestic')
         elif animal_type == 1: #Dog breed categorization
@@ -231,7 +231,7 @@ def breed_separator(breed_remove_mix):
     for breed in breed_remove_mix:
         if breed.count('/') == 0:
             main_breed.append(breed)
-            sub_breed.append(0)
+            sub_breed.append('NA')
         elif breed.count('/') == 1 or breed.count('/') == 2:
             temp_breed_list = breed.split('/')
             main_breed.append(temp_breed_list[0])
@@ -244,7 +244,7 @@ def color_separator(color_list):
     for color in color_list:
         if color.count('/') == 0:
             main_color.append(color)
-            sub_color.append(0)
+            sub_color.append('NA')
         elif color.count('/') == 1:
             temp_color_list = color.split('/')
             main_color.append(temp_color_list[0])
@@ -581,18 +581,17 @@ as mix.'''
 pure_mix_compile = breed_separator_mix(breed_remove_mix)
 data_train['Mix_Breed'] = pure_mix_compile
 
-'''Let us first apply label encoding for all the string valued columns'''
-size_mapping = {'unknown': 0, 'small':1, 'medium':2, 'giant':3, 'large':4, 'domestic':5, 'mix':6}
+'''Let us make a copy of data_train in case we need further processing'''
 data_train_le = data_train.copy()
-data_train_le['Size'] = data_train_le['Size'].map(size_mapping)
 
 '''The get_dummies method is mentioned in Python Learning by Sebastian Raschka.
 It is much more convenient than one hot encoding IMO. This only works for strings btw.'''
 main_color_le = pd.get_dummies(data_train_le[['Main_Color']])
+sub_color_le = pd.get_dummies(data_train_le[['Sub_Color']])
 main_breed_le = pd.get_dummies(data_train_le[['Main_Breed']])
+sub_breed_le = pd.get_dummies(data_train_le[['Sub_Breed']])
 year_le = pd.get_dummies(data_train_le[['OutcomeYearstr']])
 month_le = pd.get_dummies(data_train_le[['OutcomeMonthstr']])
-outcomesub_le = pd.get_dummies(data_inter[['OutcomeSubtype']])
 size_le = pd.get_dummies(data_train['Size'])
 sex_le = pd.get_dummies(data_inter['SexuponOutcome'])
 
@@ -601,9 +600,8 @@ sex_le = pd.get_dummies(data_inter['SexuponOutcome'])
 of various decision tree based algorithms such as random forest, adaboost, XGboost'''
 ###############################################################################
 '''Let us first run a simple case using RandomForest'''
-dfX = data_train_le[['Name', 'AnimalType', 
-                     'AgeuponOutcome']]
-dfX = pd.concat([dfX, main_color_le, year_le, month_le, size_le, outcomesub_le, sex_le], axis = 1)
+dfX = data_train_le[['Name', 'AnimalType', 'AgeuponOutcome']]
+dfX = pd.concat([dfX, size_le, main_breed_le, sub_breed_le, main_color_le, sub_color_le, year_le, month_le, sex_le], axis = 1)
 dfY = data_train_le['OutcomeType']
 
 dfX_train, dfX_test, dfY_train, dfY_test = train_test_split(dfX, dfY, test_size = 0.2, random_state=0)
@@ -626,29 +624,77 @@ y_proba = model_xgb.predict_proba(dfX_test)
 performance = log_loss(dfY_test, y_proba)
 
 ###############################################################################
-'''Aite the result was good. Let us look at how random forest performs'''
-random_model =  RandomForestClassifier(max_depth=20, n_estimators=50)
-random_model.fit(dfX_train, dfY_train)
+'''2nd data formatting'''
+dfX2 = data_train_le[['Name', 'AnimalType', 'AgeuponOutcome']]
+dfX2 = pd.concat([dfX2, main_breed_le, main_color_le, month_le, sex_le], axis = 1)
+dfY2 = data_train_le['OutcomeType']
 
-y_pred_train2 = random_model.predict(dfX_train)
-print(classification_report(dfY_train, y_pred_train2))
+dfX2_train, dfX2_test, dfY2_train, dfY2_test = train_test_split(dfX2, dfY2, test_size = 0.2, random_state=0)
 
-y_pred_test2 = random_model.predict(dfX_test)
-print(classification_report(dfY_test, y_pred_test2))
+'''Fuck it let us give Xgboost a try'''
+model_xgb2 = xgboost.XGBClassifier(n_estimators=100, max_depth=3)
+model_xgb2.fit(dfX2_train, dfY2_train)
 
-y_proba2 = random_model.predict_proba(dfX_test)
-performance2 = log_loss(dfY_test, y_proba2)
+'''Train set accuracy'''
+y_pred_train2 = model_xgb2.predict(dfX2_train)
+print(classification_report(dfY2_train, y_pred_train2))
+
+'Test set accuracy'''
+y_pred_test2 = model_xgb2.predict(dfX2_test)
+print(classification_report(dfY2_test, y_pred_test2))
+
+'''Reference:https://www.kaggle.com/c/shelter-animal-outcomes/discussion/22119'''
+'''This reference mentions the data exploit and how it affected the result'''
+y_proba2 = model_xgb2.predict_proba(dfX2_test)
+performance2 = log_loss(dfY2_test, y_proba2)
 
 ###############################################################################
-'''Extraforest algorithm'''
-extra_model = ExtraTreesClassifier(max_depth=20, n_estimators=50)
-extra_model.fit(dfX_train, dfY_train)
- 
-y_pred_train3 = extra_model.predict(dfX_train)
-print(classification_report(dfY_train, y_pred_train3))
- 
-y_pred_test3 = extra_model.predict(dfX_test)
-print(classification_report(dfY_test, y_pred_test3))
+'''3rd data formatting'''
+dfX3 = data_train_le[['Name', 'AnimalType', 'AgeuponOutcome']]
+dfX3 = pd.concat([dfX3, main_breed_le, sub_breed_le, main_color_le, sub_color_le, month_le, sex_le], axis = 1)
+dfY3 = data_train_le['OutcomeType']
 
-y_proba3 = extra_model.predict_proba(dfX_test)
-performance3 = log_loss(dfY_test, y_proba3)
+dfX3_train, dfX3_test, dfY3_train, dfY3_test = train_test_split(dfX3, dfY3, test_size = 0.2, random_state=0)
+
+'''Fuck it let us give Xgboost a try'''
+model_xgb3 = xgboost.XGBClassifier(n_estimators=100, max_depth=3)
+model_xgb3.fit(dfX3_train, dfY3_train)
+
+'''Train set accuracy'''
+y_pred_train3 = model_xgb3.predict(dfX3_train)
+print(classification_report(dfY3_train, y_pred_train3))
+
+'Test set accuracy'''
+y_pred_test3 = model_xgb3.predict(dfX3_test)
+print(classification_report(dfY3_test, y_pred_test3))
+
+'''Reference:https://www.kaggle.com/c/shelter-animal-outcomes/discussion/22119'''
+'''This reference mentions the data exploit and how it affected the result'''
+y_proba3 = model_xgb3.predict_proba(dfX3_test)
+performance3 = log_loss(dfY3_test, y_proba3)
+
+###############################################################################
+'''Investigate the effect of name'''
+'''3rd data formatting'''
+dfX4 = data_train_le[['Name', 'AnimalType', 'AgeuponOutcome']]
+dfX4 = pd.concat([dfX4, size_le, main_color_le, sub_color_le, month_le, year_le, sex_le], axis = 1)
+dfY4 = data_train_le['OutcomeType']
+
+dfX4_train, dfX4_test, dfY4_train, dfY4_test = train_test_split(dfX4, dfY4, test_size = 0.2, random_state=0)
+
+'''Fuck it let us give Xgboost a try'''
+model_xgb4 = xgboost.XGBClassifier(n_estimators=100, max_depth=3)
+model_xgb4.fit(dfX4_train, dfY4_train)
+
+'''Train set accuracy'''
+y_pred_train4 = model_xgb4.predict(dfX4_train)
+print(classification_report(dfY4_train, y_pred_train4))
+
+'Test set accuracy'''
+y_pred_test4 = model_xgb4.predict(dfX4_test)
+print(classification_report(dfY4_test, y_pred_test4))
+
+'''Reference:https://www.kaggle.com/c/shelter-animal-outcomes/discussion/22119'''
+'''This reference mentions the data exploit and how it affected the result'''
+y_proba4 = model_xgb4.predict_proba(dfX4_test)
+performance4 = log_loss(dfY4_test, y_proba4)
