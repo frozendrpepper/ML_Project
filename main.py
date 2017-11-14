@@ -75,20 +75,24 @@ def datetime_str_converter(data_train):
     string format. The below method is identical except it returns numerical
     value. The string format is used for graphing with countplot'''
     datetime = list(data_train['DateTime'])
-    year_list, month_list = [], []
+    year_list, month_list, day_list, hour_list = [], [], [], []
     for item in datetime:
         year_list.append(item[:4])
         month_list.append(item[5:7])
-    return year_list, month_list
+        day_list.append(item[8:10])
+        hour_list.append(item[11:13])
+    return year_list, month_list, day_list, hour_list
     
 def datetime_converter(data_train):
     '''Convert date time into year and month'''
     datetime = list(data_train['DateTime'])
-    year_list, month_list = [], []
+    year_list, month_list, day_list, hour_list = [], [], [], []
     for item in datetime:
         year_list.append(int(item[:4]))
         month_list.append(int(item[5:7]))
-    return year_list, month_list
+        day_list.append(int(item[8:10]))
+        hour_list.append(int(item[11:13]))
+    return year_list, month_list, day_list, hour_list
 
 def season_sort(month_list):
     '''Converts month information to season information'''
@@ -276,13 +280,14 @@ data_inter['Name'] = data_inter['Name'].transform(no_name_label)
 data_inter['OutcomeSubtype'] = data_inter['OutcomeSubtype'].fillna('Unknown')
 
 '''Year and Month information extraction'''
-year_list, month_list = datetime_str_converter(data_inter)
+year_list, month_list, day_list, hour_list = datetime_str_converter(data_inter)
 date_list = []
 for year, month in zip(year_list, month_list):
     date_list.append(int(year + month))
 data_inter['Date'] = date_list
-year_list, month_list = datetime_converter(data_inter)
+year_list, month_list, day_list, hour_list = datetime_converter(data_inter)
 data_inter['OutcomeYear'], data_inter['OutcomeMonth'] = year_list, month_list
+data_inter['OutcomeDay'], data_inter['OutcomeHour'] = day_list, hour_list
 season_list = season_sort(month_list)
 data_inter['OutcomeSeason'] = season_list
     
@@ -378,7 +383,8 @@ count_outcome(data_train)
 '''name mapping get 1 and pets without names get a 0'''
 data_train['Name'] = data_train['Name'].transform(no_name_numeric_label)
 
-'''OutcomeSubtype encoding'''
+'''OutcomeSubtype encoding. We do not need this part so I will comment it out.
+But this causes issues later when dropping nan values'''
 data_train, outComeSubtype_mapping = convert_subtype(data_train)
 data_train['OutcomeSubtype'] = data_train['OutcomeSubtype'].fillna(0)
 
@@ -396,15 +402,17 @@ data_train['OutcomeType'] = data_train['OutcomeType'].map(outcome_mapping)
 
 '''Year and Month information extraction'''
 '''Make columns in both string an integer format as this will be useful later on'''
-year_list, month_list = datetime_str_converter(data_train)
+year_list, month_list, day_list, hour_list = datetime_str_converter(data_train)
 data_train['OutcomeYearstr'], data_train['OutcomeMonthstr'] = year_list, month_list
+data_train['OutcomeDaystr'], data_train['OutcomeHourstr'] = day_list, hour_list
 date_list = []
 for year, month in zip(year_list, month_list):
     date_list.append(int(year + month))
 data_train['Date'] = date_list
 
-year_list, month_list = datetime_converter(data_train)
+year_list, month_list, day_list, hour_list = datetime_converter(data_train)
 data_train['OutcomeYear'], data_train['OutcomeMonth'] = year_list, month_list
+data_train['OutcomeDay'], data_train['OutcomeHour'] = day_list, hour_list
 season_list = season_sort(month_list)
 data_train['OutcomeSeason'] = season_list
 '''Drop the datetime column since we don't need information on day and 
@@ -592,8 +600,12 @@ main_breed_le = pd.get_dummies(data_train_le[['Main_Breed']])
 sub_breed_le = pd.get_dummies(data_train_le[['Sub_Breed']])
 year_le = pd.get_dummies(data_train_le[['OutcomeYearstr']])
 month_le = pd.get_dummies(data_train_le[['OutcomeMonthstr']])
+day_le = pd.get_dummies(data_train_le[['OutcomeDaystr']])
+hour_le = pd.get_dummies(data_train_le[['OutcomeHourstr']])
 size_le = pd.get_dummies(data_train['Size'])
 sex_le = pd.get_dummies(data_inter['SexuponOutcome'])
+season_le = pd.get_dummies(data_train_le[['OutcomeSeason']])
+
 
 ###############################################################################
 '''The preprocessing portion is complete for now. Codes below will be implementation
@@ -607,7 +619,7 @@ dfY = data_train_le['OutcomeType']
 dfX_train, dfX_test, dfY_train, dfY_test = train_test_split(dfX, dfY, test_size = 0.2, random_state=0)
 
 '''Fuck it let us give Xgboost a try'''
-model_xgb = xgboost.XGBClassifier(n_estimators=100, max_depth=3)
+model_xgb = xgboost.XGBClassifier(n_estimators=100, max_depth=2, nthread=-1)
 model_xgb.fit(dfX_train, dfY_train)
 
 '''Train set accuracy'''
@@ -632,7 +644,7 @@ dfY2 = data_train_le['OutcomeType']
 dfX2_train, dfX2_test, dfY2_train, dfY2_test = train_test_split(dfX2, dfY2, test_size = 0.2, random_state=0)
 
 '''Fuck it let us give Xgboost a try'''
-model_xgb2 = xgboost.XGBClassifier(n_estimators=100, max_depth=3)
+model_xgb2 = xgboost.XGBClassifier(n_estimators=100, max_depth=2, nthread=-1)
 model_xgb2.fit(dfX2_train, dfY2_train)
 
 '''Train set accuracy'''
@@ -657,7 +669,7 @@ dfY3 = data_train_le['OutcomeType']
 dfX3_train, dfX3_test, dfY3_train, dfY3_test = train_test_split(dfX3, dfY3, test_size = 0.2, random_state=0)
 
 '''Fuck it let us give Xgboost a try'''
-model_xgb3 = xgboost.XGBClassifier(n_estimators=100, max_depth=3)
+model_xgb3 = xgboost.XGBClassifier(n_estimators=100, max_depth=2, nthread=-1)
 model_xgb3.fit(dfX3_train, dfY3_train)
 
 '''Train set accuracy'''
@@ -683,7 +695,7 @@ dfY4 = data_train_le['OutcomeType']
 dfX4_train, dfX4_test, dfY4_train, dfY4_test = train_test_split(dfX4, dfY4, test_size = 0.2, random_state=0)
 
 '''Fuck it let us give Xgboost a try'''
-model_xgb4 = xgboost.XGBClassifier(n_estimators=100, max_depth=3)
+model_xgb4 = xgboost.XGBClassifier(n_estimators=100, max_depth=2, nthread=-1)
 model_xgb4.fit(dfX4_train, dfY4_train)
 
 '''Train set accuracy'''
@@ -698,3 +710,75 @@ print(classification_report(dfY4_test, y_pred_test4))
 '''This reference mentions the data exploit and how it affected the result'''
 y_proba4 = model_xgb4.predict_proba(dfX4_test)
 performance4 = log_loss(dfY4_test, y_proba4)
+
+###############################################################################
+'''Investigate the effect of name'''
+'''3rd data formatting'''
+dfX5 = data_train_le[['Name', 'AnimalType', 'AgeuponOutcome']]
+dfX5 = pd.concat([dfX5, main_breed_le, sub_breed_le, main_color_le, sub_color_le, season_le, sex_le], axis = 1)
+dfY5 = data_train_le['OutcomeType']
+
+dfX5_train, dfX5_test, dfY5_train, dfY5_test = train_test_split(dfX5, dfY5, test_size = 0.2, random_state=0)
+
+'''Fuck it let us give Xgboost a try'''
+model_xgb5 = xgboost.XGBClassifier(n_estimators=100, max_depth=2, nthread=-1)
+model_xgb5.fit(dfX5_train, dfY5_train)
+
+'''Train set accuracy'''
+y_pred_train5 = model_xgb5.predict(dfX5_train)
+print(classification_report(dfY5_train, y_pred_train5))
+
+'Test set accuracy'''
+y_pred_test5 = model_xgb5.predict(dfX5_test)
+print(classification_report(dfY5_test, y_pred_test5))
+
+'''Reference:https://www.kaggle.com/c/shelter-animal-outcomes/discussion/22119'''
+'''This reference mentions the data exploit and how it affected the result'''
+y_proba5 = model_xgb5.predict_proba(dfX5_test)
+performance5 = log_loss(dfY5_test, y_proba5)
+
+###############################################################################
+'''Include day and hour information as well'''
+dfX6 = data_train_le[['Name', 'AnimalType', 'AgeuponOutcome']]
+dfX6 = pd.concat([dfX6, size_le, main_breed_le, sub_breed_le, main_color_le, sub_color_le, 
+                 year_le, month_le, day_le, hour_le, sex_le], axis = 1)
+dfY6 = data_train_le['OutcomeType']
+
+dfX6_train, dfX6_test, dfY6_train, dfY6_test = train_test_split(dfX6, dfY6, test_size = 0.2, random_state=0)
+
+'''Fuck it let us give Xgboost a try'''
+model_xgb6 = xgboost.XGBClassifier(n_estimators=100, max_depth=2, nthread=-1)
+model_xgb6.fit(dfX6_train, dfY6_train)
+
+'''Train set accuracy'''
+y_pred_train6 = model_xgb6.predict(dfX6_train)
+print(classification_report(dfY6_train, y_pred_train6))
+
+'Test set accuracy'''
+y_pred_test6 = model_xgb6.predict(dfX6_test)
+print(classification_report(dfY6_test, y_pred_test6))
+
+'''Reference:https://www.kaggle.com/c/shelter-animal-outcomes/discussion/22119'''
+'''This reference mentions the data exploit and how it affected the result'''
+y_proba6 = model_xgb6.predict_proba(dfX6_test)
+performance6 = log_loss(dfY6_test, y_proba6)
+
+##############################################################
+'''Feature importance analysis code'''
+'''Reference: Python Machine Learning'''
+feat_labels = np.array(dfX6.columns)
+forest = RandomForestClassifier(n_estimators=1000, random_state=0, n_jobs = -1)
+forest.fit(dfX6_train, dfY6_train)
+
+importances = forest.feature_importances_
+indices = np.argsort(importances)[::-1]
+indices = indices[:15]
+
+for f in range(len(indices)):
+    print("%2d %-*s %f" % (f + 1, 30, feat_labels[indices[f]], importances[indices[f]] ))
+
+plt.title("Feature importances")
+plt.bar(feat_labels[indices], importances[indices], align="center")
+plt.xticks(rotation = 90)
+#plt.xlim([-1, len(indices)])
+plt.show()
