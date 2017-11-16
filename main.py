@@ -835,3 +835,6 @@ plt.bar(range(len(indices)), importances[indices])
 plt.xticks(range(len(indices)), feat_labels[indices], rotation=90)
 plt.tight_layout()
 plt.show()
+
+###############################################################################
+'''Let us try and merge train.csv data withe intake data from Austin website'''
