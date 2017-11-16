@@ -763,22 +763,75 @@ print(classification_report(dfY6_test, y_pred_test6))
 y_proba6 = model_xgb6.predict_proba(dfX6_test)
 performance6 = log_loss(dfY6_test, y_proba6)
 
+###############################################################################
+'''Include day and hour information as well'''
+dfX7 = data_train_le[['Name', 'AnimalType', 'AgeuponOutcome']]
+dfX7 = pd.concat([dfX7, size_le, main_breed_le, sub_breed_le, main_color_le, sub_color_le, 
+                 year_le, month_le, day_le, hour_le, sex_le], axis = 1)
+dfY7 = data_train_le['OutcomeType']
+
+dfX7_train, dfX7_test, dfY7_train, dfY7_test = train_test_split(dfX7, dfY7, test_size = 0.2, random_state=0)
+
+'''Fuck it let us give Xgboost a try'''
+model_xgb7 = xgboost.XGBClassifier(n_estimators=100, max_depth=8, nthread=-1)
+model_xgb7.fit(dfX7_train, dfY7_train)
+
+'''Train set accuracy'''
+y_pred_train7 = model_xgb7.predict(dfX7_train)
+print(classification_report(dfY7_train, y_pred_train7))
+
+'''Test set accuracy'''
+y_pred_test7 = model_xgb7.predict(dfX7_test)
+print(classification_report(dfY7_test, y_pred_test7))
+
+'''Reference:https://www.kaggle.com/c/shelter-animal-outcomes/discussion/22119'''
+'''This reference mentions the data exploit and how it affected the result'''
+y_proba7 = model_xgb7.predict_proba(dfX7_test)
+performance7 = log_loss(dfY7_test, y_proba7)
+
+###############################################################################
+'''Include day and hour information as well'''
+dfX8 = data_train_le[['Name', 'AnimalType', 'AgeuponOutcome']]
+dfX8 = pd.concat([dfX8, size_le, main_breed_le, sub_breed_le, main_color_le, sub_color_le, 
+                 year_le, month_le, day_le, hour_le, sex_le], axis = 1)
+dfY8 = data_train_le['OutcomeType']
+
+dfX8_train, dfX8_test, dfY8_train, dfY8_test = train_test_split(dfX8, dfY8, test_size = 0.2, random_state=0)
+
+'''Fuck it let us give Xgboost a try'''
+model_xgb8 = xgboost.XGBClassifier(n_estimators=300, max_depth=8, nthread=-1)
+model_xgb8.fit(dfX8_train, dfY8_train)
+
+'''Train set accuracy'''
+y_pred_train8 = model_xgb8.predict(dfX8_train)
+print(classification_report(dfY8_train, y_pred_train8))
+
+'''Test set accuracy'''
+y_pred_test8 = model_xgb8.predict(dfX8_test)
+print(classification_report(dfY8_test, y_pred_test8))
+
+'''Reference:https://www.kaggle.com/c/shelter-animal-outcomes/discussion/22119'''
+'''This reference mentions the data exploit and how it affected the result'''
+y_proba8 = model_xgb8.predict_proba(dfX8_test)
+performance8 = log_loss(dfY8_test, y_proba8)
+
 ##############################################################
 '''Feature importance analysis code'''
 '''Reference: Python Machine Learning'''
-feat_labels = np.array(dfX6.columns)
+feat_labels = np.array(dfX8.columns)
 forest = RandomForestClassifier(n_estimators=1000, random_state=0, n_jobs = -1)
-forest.fit(dfX6_train, dfY6_train)
+forest.fit(dfX8_train, dfY8_train)
 
 importances = forest.feature_importances_
 indices = np.argsort(importances)[::-1]
-indices = indices[:15]
+indices = indices[:30]
 
 for f in range(len(indices)):
     print("%2d %-*s %f" % (f + 1, 30, feat_labels[indices[f]], importances[indices[f]] ))
 
+plt.figure()
 plt.title("Feature importances")
-plt.bar(feat_labels[indices], importances[indices], align="center")
-plt.xticks(rotation = 90)
-#plt.xlim([-1, len(indices)])
+plt.bar(range(len(indices)), importances[indices])
+plt.xticks(range(len(indices)), feat_labels[indices], rotation=90)
+plt.tight_layout()
 plt.show()
