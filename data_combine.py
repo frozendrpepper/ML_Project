@@ -49,4 +49,7 @@ data_train_drop = data_train.drop('OutcomeSubtype', axis = 1)
 data_train_drop.drop('OutcomeType', axis = 1, inplace = True)
 
 data_test = data_test.rename(columns = {'ID':'AnimalID'})
-data_combined = pd.concat([data_train_drop, data_test], axis = 0)
+data_combined = pd.concat([data_train_drop, data_test], axis = 0, ignore_index = True)
+
+temp = data_combined.iloc[0:26729, :]
+temp2 = data_combined.iloc[26729:, :]
