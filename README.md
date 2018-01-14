@@ -7,3 +7,5 @@ This project attempts to solve Shelter Animal Outcomes competition posted on Kag
 ## Repository Deprecation
 
 This repository was the actual repository used during the project and the team members contributed to each branch (ck, joseph, jwon). But this has been causing some headache as far as cleaning everything up and uploading presentable final version on the Master branch. So I created a new repository called [Animal_Shelter_project](https://github.com/frozendrpepper/Animal_Shelter_project). Please refer to that repository for the final version of the project.
+
+The repository will be not be deleted just in case my team members would like to access some of the older codes they've contributed.
